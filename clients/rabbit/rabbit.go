@@ -101,7 +101,7 @@ func Consume(queueName string, handler func(message string, ack func() error, na
 		return err
 	}
 
-	channel.Qos(2, 0, false)
+	// channel.Qos(50, 0, false)
 
 	deliveryChannel, err := channel.Consume(queueName, queueName, false, false, false, false, nil)
 	if err != nil {
@@ -117,11 +117,7 @@ func Consume(queueName string, handler func(message string, ack func() error, na
 		for delivery := range deliveryChannel {
 			message := string(delivery.Body)
 
-			ack := func() error {
-				fmt.Println(delivery.DeliveryTag)
-				return channel.Ack(delivery.DeliveryTag, false)
-			}
-
+			ack := createAck(delivery.DeliveryTag, channel)
 			nack := func(requeue bool) error {
 				fmt.Println(delivery.DeliveryTag)
 				return channel.Nack(delivery.DeliveryTag, false, requeue)
@@ -132,6 +128,12 @@ func Consume(queueName string, handler func(message string, ack func() error, na
 	}()
 
 	return err
+}
+
+func createAck(deliveryTag uint64, rabbitChannel *amqp.Channel) func() error {
+	return func() error {
+		return rabbitChannel.Ack(deliveryTag, false)
+	}
 }
 
 func getPublishChannel() error {
