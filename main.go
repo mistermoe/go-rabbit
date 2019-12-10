@@ -3,14 +3,15 @@ package main
 import (
 	"fmt"
 	"go-rabbit/clients/rabbit"
-	"math/rand"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
-	"time"
 )
 
 func main() {
+	runtime.GOMAXPROCS(4)
+
 	// set up graceful shutdown
 	sysSigChannel := make(chan os.Signal, 1)
 	sysSigProcessedChannel := make(chan bool, 1)
@@ -35,12 +36,14 @@ func main() {
 		panic(err)
 	}
 
-	err = rabbit.Consume("hello", processHellos)
-	if err != nil {
-		panic(err)
+	for i := 0; i < 4; i++ {
+		err = rabbit.Consume("hello", processHellos)
+		if err != nil {
+			panic(err)
+		}
 	}
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 200; i++ {
 		fmt.Println("publishing message")
 
 		err = rabbit.Publish("hello", "hi")
@@ -55,11 +58,9 @@ func main() {
 }
 
 func processHellos(message string, ack func() error, nack func(bool) error) {
-	fmt.Println("yeee boiiiii!", message)
-
 	// simulate work. sleep for up to 500ms
-	sleepDurationMillis := time.Duration(rand.Intn(500)) * time.Millisecond
-	time.Sleep(sleepDurationMillis)
+	// sleepDurationMillis := time.Duration(rand.Intn(500)) * time.Millisecond
+	// time.Sleep(sleepDurationMillis)
 
 	rabbit.Publish("hello", "hi")
 

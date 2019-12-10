@@ -2,6 +2,7 @@ package rabbit
 
 import (
 	"fmt"
+	"math/rand"
 	"sync"
 
 	"github.com/streadway/amqp"
@@ -45,11 +46,11 @@ func Disconnect() error {
 		}
 
 		fmt.Println("Gracefully stopping consumers")
-		for queueName, consumer := range consumerMap {
-			fmt.Println("closing", queueName, "delivery chan")
-			consumer.RabbitChannel.Cancel(queueName, false)
+		for tag, consumer := range consumerMap {
+			fmt.Println("closing", consumer.QueueName, "delivery chan")
+			consumer.RabbitChannel.Cancel(tag, false)
 
-			fmt.Println("closing", queueName, "rabbit channel")
+			fmt.Println("closing", consumer.QueueName, "rabbit channel")
 			consumer.RabbitChannel.Close()
 		}
 
@@ -101,16 +102,19 @@ func Consume(queueName string, handler func(message string, ack func() error, na
 		return err
 	}
 
-	// channel.Qos(50, 0, false)
+	channel.Qos(50, 0, false)
 
-	deliveryChannel, err := channel.Consume(queueName, queueName, false, false, false, false, nil)
+	tag := fmt.Sprintf("%s%d", queueName, rand.Intn(500))
+	deliveryChannel, err := channel.Consume(queueName, tag, false, false, false, false, nil)
 	if err != nil {
 		return err
 	}
 
-	consumerMap[queueName] = &Consumer{
+	consumerMap[tag] = &Consumer{
 		RabbitChannel:   channel,
 		DeliveryChannel: deliveryChannel,
+		Tag:             tag,
+		QueueName:       queueName,
 	}
 
 	go func() {

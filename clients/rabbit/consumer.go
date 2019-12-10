@@ -7,4 +7,6 @@ import (
 type Consumer struct {
 	RabbitChannel   *amqp.Channel
 	DeliveryChannel <-chan amqp.Delivery
+	Tag             string
+	QueueName       string
 }
